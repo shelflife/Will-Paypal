@@ -8,8 +8,8 @@ class WillPaypal
 
   DEFAULT_OPTIONS = {
     :cert_path => '/etc/ssl/certs',
-    :version   => "72.0",
     :sandbox   => false,
+    :aa_api    => false,
     :params    => {}
   }
 
@@ -20,16 +20,27 @@ class WillPaypal
   end
 
   def query_string_for(data)
-    data.merge!({
-     "USER"       => self.config[:user],
-     "PWD"        => self.config[:password],
-     "SIGNATURE"  => self.config[:signature],
-     "VERSION"    => self.config[:version]
-    })
+    if self.config[:aa_api]
+      data.merge!({
+        "X-PAYPAL-APPLICATION-ID"     => self.config[:application_id],
+        "X-PAYPAL-SECURITY-USERID"    => self.config[:userid],
+        "X-PAYPAL-SECURITY-PASSWORD"  => self.config[:password],
+        "X-PAYPAL-SECURITY-SIGNATURE" => self.config[:signature],
+      })
+    else
+      data.merge!({
+        "USER"       => self.config[:user],
+        "PWD"        => self.config[:password],
+        "SIGNATURE"  => self.config[:signature],
+        "VERSION"    => self.config[:version],
+      })
+    end
+
     data.merge!(self.config[:params])
     query = []
     data.each do |key, value|
-      query << "#{key.to_s.upcase}=#{CGI.escape(value.to_s)}"
+      formatted_key = self.config[:aa_api] ? key.to_s : key.to_s.upcase
+      query << "#{formatted_key}=#{CGI.escape(value.to_s)}"
     end
     query.sort.join("&")
   end
